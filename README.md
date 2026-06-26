@@ -45,7 +45,10 @@ La app tambien reconoce `assets/Figtree-Bold (1).ttf`.
 
 ## Guardados
 
-Cada generacion puede guardarse en `certificados_guardados/`. Desde la barra lateral puedes descargar de nuevo los ultimos lotes creados.
+Cada generacion puede guardarse temporalmente en `certificados_guardados/` si activas `Guardar copia temporal`.
+Desde la barra lateral puedes elegir un lote, preparar su descarga y limpiar los guardados temporales.
+
+En produccion, descarga el ZIP y el CSV justo al finalizar la generacion. El historial temporal se mantiene liviano para evitar sobrecargar Streamlit Cloud.
 
 ## Presets
 

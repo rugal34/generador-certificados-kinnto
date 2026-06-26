@@ -5,6 +5,7 @@ import io
 import json
 import os
 import re
+import shutil
 import tempfile
 import unicodedata
 import zipfile
@@ -27,6 +28,8 @@ except ImportError:  # pragma: no cover - shown in the Streamlit UI
 SUPPORTED_IMAGES = ("png", "jpg", "jpeg")
 SUPPORTED_FONTS = ("ttf", "otf")
 DEFAULT_CLOUDINARY_FOLDER = "certificados"
+MAX_SAVED_BATCHES = 8
+MAX_BATCH_DOWNLOAD_BYTES = 120 * 1024 * 1024
 APP_DIR = Path(__file__).resolve().parent
 ASSETS_DIR = APP_DIR / "assets"
 GENERATED_DIR = APP_DIR / "certificados_guardados"
@@ -221,6 +224,27 @@ def build_zip_from_folder(folder: Path) -> bytes:
     return build_zip(files)
 
 
+def folder_size_bytes(folder: Path) -> int:
+    total = 0
+    for path in folder.rglob("*"):
+        if path.is_file():
+            try:
+                total += path.stat().st_size
+            except OSError:
+                pass
+    return total
+
+
+def format_bytes(size: int) -> str:
+    units = ("B", "KB", "MB", "GB")
+    value = float(size)
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} {unit}"
+        value /= 1024
+    return f"{size} B"
+
+
 def save_generation(
     rows: list[dict],
     files: list[tuple[str, bytes]],
@@ -248,7 +272,7 @@ def save_generation(
     return batch_dir
 
 
-def saved_batches(limit: int = 8) -> list[Path]:
+def saved_batches(limit: int = MAX_SAVED_BATCHES) -> list[Path]:
     if not GENERATED_DIR.exists():
         return []
     folders = [
@@ -257,6 +281,11 @@ def saved_batches(limit: int = 8) -> list[Path]:
         if path.is_dir() and (path / "metadata.json").exists()
     ]
     return sorted(folders, key=lambda path: path.stat().st_mtime, reverse=True)[:limit]
+
+
+def delete_saved_batches() -> None:
+    if GENERATED_DIR.exists() and GENERATED_DIR.resolve().parent == APP_DIR.resolve():
+        shutil.rmtree(GENERATED_DIR)
 
 
 def saved_presets() -> list[Path]:
@@ -882,26 +911,58 @@ def main() -> None:
             upload_enabled = False
             cloud_folder = st.session_state.get("cloud_folder_input", DEFAULT_CLOUDINARY_FOLDER)
         st.divider()
-        save_local = st.toggle("Guardar copia local", value=True)
+        save_local = st.toggle("Guardar copia temporal", value=False)
         st.header("Guardados")
         batches = saved_batches()
         if batches:
+            batch_labels = []
             for batch in batches:
-                metadata_path = batch / "metadata.json"
                 label = batch.name
-                if metadata_path.exists():
-                    try:
-                        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-                        label = f"{metadata.get('count', 0)} cert. - {batch.name}"
-                    except Exception:
-                        pass
+                try:
+                    metadata = json.loads((batch / "metadata.json").read_text(encoding="utf-8"))
+                    size_label = format_bytes(folder_size_bytes(batch))
+                    label = f"{metadata.get('count', 0)} cert. - {size_label} - {batch.name}"
+                except Exception:
+                    pass
+                batch_labels.append(label)
+
+            selected_batch_index = st.selectbox(
+                "Lote guardado",
+                range(len(batches)),
+                format_func=lambda index: batch_labels[index],
+            )
+            selected_batch = batches[int(selected_batch_index)]
+            if st.button("Preparar descarga", use_container_width=True):
+                try:
+                    selected_size = folder_size_bytes(selected_batch)
+                    if selected_size > MAX_BATCH_DOWNLOAD_BYTES:
+                        st.warning(
+                            "Ese lote es demasiado grande para preparar desde el historial. "
+                            "Limpia los guardados temporales o genera de nuevo y descarga al finalizar."
+                        )
+                    else:
+                        st.session_state["prepared_batch_name"] = selected_batch.name
+                        st.session_state["prepared_batch_zip"] = build_zip_from_folder(selected_batch)
+                except Exception as exc:
+                    st.error(f"No se pudo preparar ese lote: {exc}")
+
+            prepared_name = st.session_state.get("prepared_batch_name")
+            prepared_zip = st.session_state.get("prepared_batch_zip")
+            if prepared_name and prepared_zip:
                 st.download_button(
-                    label,
-                    data=build_zip_from_folder(batch),
-                    file_name=f"{batch.name}.zip",
+                    "Descargar lote preparado",
+                    data=prepared_zip,
+                    file_name=f"{prepared_name}.zip",
                     mime="application/zip",
                     use_container_width=True,
                 )
+
+            if st.button("Limpiar guardados temporales", use_container_width=True):
+                delete_saved_batches()
+                st.session_state.pop("prepared_batch_name", None)
+                st.session_state.pop("prepared_batch_zip", None)
+                st.success("Guardados temporales limpiados.")
+                st.rerun()
         else:
             st.caption("Aun no hay certificados guardados.")
 
