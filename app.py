@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import tempfile
+import traceback
 import unicodedata
 import zipfile
 from dataclasses import dataclass
@@ -1342,5 +1343,14 @@ def main() -> None:
                 st.dataframe(pd.DataFrame(errors), use_container_width=True, hide_index=True)
 
 
+def run_app() -> None:
+    try:
+        main()
+    except Exception:
+        st.error("La app encontro un error antes de terminar de cargar.")
+        st.caption("Copia este detalle si vuelve a pasar en Streamlit Cloud.")
+        st.code(traceback.format_exc(), language="python")
+
+
 if __name__ == "__main__":
-    main()
+    run_app()

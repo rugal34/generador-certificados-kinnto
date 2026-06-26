@@ -24,6 +24,7 @@ country_code,cellphone,nombre,certificado
 
 El archivo `.streamlit/config.toml` del repo no debe fijar `server.address` ni `server.port`.
 Streamlit Community Cloud asigna esos valores durante el despliegue.
+El archivo `runtime.txt` fija Python 3.12, que es la version usada para validar la app localmente.
 
 ## Importante para produccion
 
