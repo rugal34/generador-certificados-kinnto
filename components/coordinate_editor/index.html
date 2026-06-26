@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --cyan: #36f6ff;
+      --lime: #27ff73;
+      --coral: #ff4f67;
+      --ink: #f7fbff;
+    }
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+    .editor {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+      user-select: none;
+      touch-action: none;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(7, 8, 16, .62);
+      border: 1px solid rgba(54, 246, 255, .22);
+    }
+    .editor img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .label {
+      position: absolute;
+      box-sizing: border-box;
+      min-height: 1.2em;
+      padding: .08em .14em;
+      border: 1px solid rgba(54, 246, 255, .95);
+      background: rgba(6, 10, 18, .28);
+      box-shadow: 0 0 0 1px rgba(7, 8, 16, .35), 0 0 24px rgba(54, 246, 255, .26);
+      cursor: grab;
+      line-height: 1.1;
+      font-weight: 900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .label.document {
+      border-color: rgba(39, 255, 115, .95);
+      box-shadow: 0 0 0 1px rgba(7, 8, 16, .35), 0 0 24px rgba(39, 255, 115, .22);
+    }
+    .label.active {
+      outline: 2px solid var(--coral);
+      outline-offset: 2px;
+    }
+    .label.dragging {
+      cursor: grabbing;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const root = document.getElementById("root");
+    let args = {};
+    let dragging = false;
+    let dragOffset = { x: 0, y: 0 };
+    let activeLabel = null;
+
+    function send(type, payload) {
+      window.parent.postMessage(
+        Object.assign({ isStreamlitMessage: true, type }, payload || {}),
+        "*"
+      );
+    }
+
+    function setReady() {
+      send("streamlit:componentReady", { apiVersion: 1 });
+    }
+
+    function setHeight() {
+      const height = Math.ceil(document.body.scrollHeight || 0);
+      send("streamlit:setFrameHeight", { height });
+    }
+
+    function sizeEditor() {
+      const editor = root.querySelector(".editor");
+      const image = root.querySelector("img");
+      if (!editor || !image) return;
+      const ratio = args.imageWidth && args.imageHeight ? args.imageWidth / args.imageHeight : 1.4;
+      const maxHeight = Number(args.maxEditorHeightPx || 560);
+      const availableWidth = Math.max(280, root.clientWidth || window.innerWidth || 720);
+      const displayWidth = Math.min(availableWidth, Math.max(320, maxHeight * ratio));
+      editor.style.width = `${displayWidth}px`;
+      image.style.width = `${displayWidth}px`;
+    }
+
+    function componentValue(x, y) {
+      send("streamlit:setComponentValue", {
+        value: {
+          target: args.target || "name",
+          x: Math.max(0, Math.round(x)),
+          y: Math.max(0, Math.round(y)),
+        },
+        dataType: "json",
+      });
+    }
+
+    function horizontalCenterX(style) {
+      return Math.max(0, ((args.imageWidth || 0) - (style.maxWidth || 0)) / 2);
+    }
+
+    function scale() {
+      const editor = root.querySelector(".editor");
+      if (!editor || !args.imageWidth) return 1;
+      return editor.clientWidth / args.imageWidth;
+    }
+
+    function pointFromEvent(event) {
+      const editor = root.querySelector(".editor");
+      const rect = editor.getBoundingClientRect();
+      const s = scale();
+      return {
+        x: (event.clientX - rect.left) / s,
+        y: (event.clientY - rect.top) / s,
+      };
+    }
+
+    function placeLabel(label, style) {
+      const s = scale();
+      const x = args.lockHorizontalCenter === false && !style.alignCenter
+        ? style.x
+        : horizontalCenterX(style);
+      label.style.left = `${x * s}px`;
+      label.style.top = `${style.y * s}px`;
+      label.style.maxWidth = `${Math.max(80, style.maxWidth * s)}px`;
+      label.style.fontSize = `${Math.max(10, style.fontSize * s)}px`;
+      label.style.color = style.color || "#ffffff";
+      label.style.textAlign = style.alignCenter ? "center" : "left";
+    }
+
+    function activeStyle() {
+      return args.target === "document" ? args.documentStyle : args.nameStyle;
+    }
+
+    function moveActiveLabel(x, y) {
+      const style = activeStyle();
+      if (!style || !activeLabel) return;
+      style.x = horizontalCenterX(style);
+      style.y = Math.max(0, Math.min(args.imageHeight || y, y));
+      style.alignCenter = true;
+      placeLabel(activeLabel, style);
+    }
+
+    function render(nextArgs) {
+      args = nextArgs || {};
+      const target = args.target || "name";
+      root.innerHTML = `
+        <div class="editor">
+          <img src="${args.imageData || ""}" alt="" />
+          <div class="label name ${target === "name" ? "active" : ""}" data-target="name"></div>
+          <div class="label document ${target === "document" ? "active" : ""}" data-target="document"></div>
+        </div>
+      `;
+
+      const image = root.querySelector("img");
+      const nameLabel = root.querySelector(".label.name");
+      const docLabel = root.querySelector(".label.document");
+      nameLabel.textContent = args.nameStyle?.text || "Nombre";
+      docLabel.textContent = args.documentStyle?.text || "";
+      docLabel.style.display = args.showDocument ? "block" : "none";
+
+      function drawLabels() {
+        sizeEditor();
+        if (args.nameStyle) placeLabel(nameLabel, args.nameStyle);
+        if (args.documentStyle) placeLabel(docLabel, args.documentStyle);
+        setHeight();
+      }
+
+      image.addEventListener("load", drawLabels);
+      window.requestAnimationFrame(drawLabels);
+
+      const editor = root.querySelector(".editor");
+      editor.addEventListener("pointerdown", event => {
+        const style = activeStyle();
+        if (!style) return;
+        editor.setPointerCapture(event.pointerId);
+        dragging = true;
+        activeLabel = target === "document" ? docLabel : nameLabel;
+        activeLabel.classList.add("dragging");
+        const point = pointFromEvent(event);
+        const s = scale();
+        const labelRect = activeLabel.getBoundingClientRect();
+        const editorRect = editor.getBoundingClientRect();
+        dragOffset = {
+          x: 0,
+          y: (event.clientY - labelRect.top) / s,
+        };
+        if (!event.target.classList.contains("label")) {
+          dragOffset = { x: 0, y: 0 };
+          moveActiveLabel(0, point.y);
+        } else {
+          const currentY = (labelRect.top - editorRect.top) / s;
+          moveActiveLabel(0, currentY);
+        }
+      });
+
+      editor.addEventListener("pointermove", event => {
+        if (!dragging) return;
+        const point = pointFromEvent(event);
+        moveActiveLabel(0, point.y - dragOffset.y);
+      });
+
+      editor.addEventListener("pointerup", event => {
+        if (!dragging) return;
+        const point = pointFromEvent(event);
+        const x = horizontalCenterX(activeStyle() || {});
+        const y = point.y - dragOffset.y;
+        dragging = false;
+        if (activeLabel) activeLabel.classList.remove("dragging");
+        activeLabel = null;
+        componentValue(x, y);
+      });
+
+      editor.addEventListener("pointercancel", () => {
+        dragging = false;
+        if (activeLabel) activeLabel.classList.remove("dragging");
+        activeLabel = null;
+      });
+    }
+
+    window.addEventListener("message", event => {
+      if (event.data && event.data.type === "streamlit:render") {
+        render(event.data.args);
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      const nameLabel = root.querySelector(".label.name");
+      const docLabel = root.querySelector(".label.document");
+      sizeEditor();
+      if (nameLabel && args.nameStyle) placeLabel(nameLabel, args.nameStyle);
+      if (docLabel && args.documentStyle) placeLabel(docLabel, args.documentStyle);
+      setHeight();
+    });
+
+    setReady();
+  </script>
+</body>
+</html>

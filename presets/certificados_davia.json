@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "name": "Certificados Davia",
+  "source_image": "CERT - DAVia - fecha correcta.png",
+  "image_size": {
+    "width": 1101,
+    "height": 1940
+  },
+  "cloudinary_folder": "certificados_prueba",
+  "name_text": {
+    "x": 550,
+    "y": 1230,
+    "max_width": 950,
+    "font_size": 78,
+    "min_font_size": 28,
+    "color": "#FFFFFF",
+    "align_center": true
+  },
+  "document_text": {
+    "prefix": "Documento:",
+    "x": 550,
+    "y": 1241,
+    "max_width": 720,
+    "font_size": 38,
+    "min_font_size": 18,
+    "color": "#FFFFFF",
+    "align_center": true
+  },
+  "saved_at": "2026-06-25T11:00:07"
+}
