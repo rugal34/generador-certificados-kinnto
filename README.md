@@ -11,9 +11,9 @@ Herramienta local para crear certificados masivos desde una imagen base y un CSV
 ## Flujo
 
 1. Carga la imagen base del certificado.
-2. Carga el CSV con `country_code`, `cellphone`, `nombre` y `certificado`, o registra una persona manualmente.
+2. Carga el CSV con `country_code`, `cellphone`, `nombre`, `apellido` y `certificado`, o registra una persona manualmente.
 3. Carga una fuente `.ttf` u `.otf` solo si quieres reemplazar la fuente por defecto.
-4. La app usa `nombre` como nombre completo por defecto.
+4. La app usa `nombre` + `apellido` por defecto.
 5. Activa el documento si el CSV trae esa columna.
 6. Ajusta la altura con el editor de mouse, la barra suave o el campo fino de 1 en 1.
 7. Guarda un preset si quieres reutilizar ese mismo diseno despues.
@@ -24,7 +24,7 @@ Herramienta local para crear certificados masivos desde una imagen base y un CSV
 La plantilla descargable usa estas columnas:
 
 ```text
-country_code,cellphone,nombre,certificado
+country_code,cellphone,nombre,apellido,certificado
 ```
 
 Al generar, la app devuelve un CSV con esas mismas columnas y escribe el link de Cloudinary en `certificado`.

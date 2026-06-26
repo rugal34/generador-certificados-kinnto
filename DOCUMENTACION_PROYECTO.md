@@ -37,7 +37,7 @@ start_app.ps1
 
 - Carga de imagen base del certificado.
 - Carga de CSV con personas.
-- Plantilla CSV compatible con Treble: `country_code`, `cellphone`, `nombre`, `certificado`.
+- Plantilla CSV compatible con Treble: `country_code`, `cellphone`, `nombre`, `apellido`, `certificado`.
 - Modo rapido para registrar una persona manualmente.
 - Plantilla CSV descargable.
 - Fuente opcional por carga manual.
@@ -131,7 +131,7 @@ Importante: las llaves usadas originalmente fueron compartidas en texto. Lo idea
 2. Subir el arte base del certificado.
 3. Elegir si se cargaran personas por CSV o una persona manual.
 4. Si se usa CSV, descargar plantilla si hace falta.
-5. Seleccionar columnas de nombre y documento si se necesita ajustar algo distinto a `nombre`.
+5. Seleccionar columnas de nombre y documento si se necesita ajustar algo distinto a `nombre` + `apellido`.
 6. Ajustar altura, tamano, ancho y color del nombre.
 7. Abrir el panel de documento solo si se requiere mostrarlo.
 8. Guardar o aplicar un preset si se quiere reutilizar el ajuste.

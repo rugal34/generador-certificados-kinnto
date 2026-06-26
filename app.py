@@ -39,7 +39,11 @@ DEFAULT_FONT_CANDIDATES = (
     ASSETS_DIR / "Figtree-Bold (1).ttf",
     ASSETS_DIR / "Figtree.ttf",
 )
-CSV_TEMPLATE = "country_code,cellphone,nombre,certificado\n57,3001234567,Ana Martinez,\n57,3007654321,Juan Gomez,\n"
+CSV_TEMPLATE = (
+    "country_code,cellphone,nombre,apellido,certificado\n"
+    "57,3001234567,Ana,Martinez,\n"
+    "57,3007654321,Juan,Gomez,\n"
+)
 coordinate_editor_component = components.declare_component(
     "kinnto_coordinate_editor",
     path=str(COORDINATE_EDITOR_DIR),
@@ -415,6 +419,10 @@ def preferred_column(columns: list[str], candidates: list[str], fallback: str | 
         if match is not None:
             return match
     return fallback if fallback is not None else columns[0]
+
+
+def has_column(columns: list[str], name: str) -> bool:
+    return any(str(column).strip().lower() == name.lower() for column in columns)
 
 
 def build_treble_output_csv(source_df: pd.DataFrame, rows: list[dict]) -> bytes:
@@ -986,8 +994,13 @@ def main() -> None:
             selector_cols = st.columns(2)
             with selector_cols[0]:
                 full_name_options = ["No usar"] + columns
+                full_name_candidate = (
+                    "No usar"
+                    if has_column(columns, "apellido")
+                    else preferred_column(columns, ["nombre completo", "full name", "name", "nombre"], "No usar")
+                )
                 full_name_default = full_name_options.index(
-                    preferred_column(columns, ["nombre", "full name", "name"], "No usar")
+                    full_name_candidate
                 )
                 full_name_col = st.selectbox(
                     "Nombre completo",
@@ -1000,7 +1013,7 @@ def main() -> None:
             with selector_cols[1]:
                 last_options = ["No usar"] + columns
                 last_default = last_options.index(
-                    preferred_column(columns, ["last name", "apellido"], "No usar")
+                    preferred_column(columns, ["apellido", "last name"], "No usar")
                 )
                 last_col = st.selectbox("Apellido", last_options, index=last_default)
                 document_options = ["No usar"] + columns
