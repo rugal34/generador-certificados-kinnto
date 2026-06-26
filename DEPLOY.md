@@ -20,6 +20,11 @@ country_code,cellphone,nombre,certificado
 57,3001234567,Ana Martinez,
 ```
 
+## Configuracion de Streamlit
+
+El archivo `.streamlit/config.toml` del repo no debe fijar `server.address` ni `server.port`.
+Streamlit Community Cloud asigna esos valores durante el despliegue.
+
 ## Importante para produccion
 
 - Rota las llaves actuales de Cloudinary antes de publicar.
