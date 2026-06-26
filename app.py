@@ -691,6 +691,24 @@ def configure_page() -> None:
             color: #07111f !important;
             fill: #07111f !important;
         }
+        [data-baseweb="popover"] [role="listbox"],
+        [data-baseweb="popover"] ul,
+        [data-baseweb="popover"] li {
+            background: #f7fbff !important;
+            color: #07111f !important;
+        }
+        [data-baseweb="popover"] [role="option"],
+        [data-baseweb="popover"] [role="option"] *,
+        [data-baseweb="popover"] li,
+        [data-baseweb="popover"] li * {
+            color: #07111f !important;
+            fill: #07111f !important;
+        }
+        [data-baseweb="popover"] [aria-selected="true"],
+        [data-baseweb="popover"] [role="option"]:hover {
+            background: #e7eef6 !important;
+            color: #07111f !important;
+        }
         [data-testid="stNumberInput"] button {
             background: #f7fbff !important;
             color: #07111f !important;
