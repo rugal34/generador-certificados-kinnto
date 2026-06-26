@@ -429,11 +429,12 @@ def build_treble_output_csv(source_df: pd.DataFrame, rows: list[dict]) -> bytes:
     treble_df = source_df.copy()
     if "certificado" not in treble_df.columns:
         treble_df["certificado"] = ""
+    treble_df["certificado"] = treble_df["certificado"].fillna("").astype("string")
 
     for row in rows:
         source_index = row.get("source_index")
         if source_index in treble_df.index:
-            treble_df.at[source_index, "certificado"] = row.get("certificado", "")
+            treble_df.loc[source_index, "certificado"] = str(row.get("certificado", "") or "")
 
     return treble_df.to_csv(index=False).encode("utf-8-sig")
 
